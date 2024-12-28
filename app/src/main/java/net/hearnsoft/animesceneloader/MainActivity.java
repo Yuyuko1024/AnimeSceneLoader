@@ -7,10 +7,12 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.util.Log;
+import android.view.SurfaceHolder;
 import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -44,7 +46,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements SurfaceHolder.Callback {
 
     private ActivityMainBinding binding;
     private static final int PICK_SCENE_PACK_REQUEST = 1;
@@ -83,14 +86,18 @@ public class MainActivity extends AppCompatActivity {
             sceneCacheDir.mkdirs();
         }
 
+        binding.sceneView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        SurfaceHolder holder = binding.sceneView.getHolder();
+        holder.addCallback(this);
+
         progressDialog = new LoadingDialog(this);
         bgmPlayer = new SceneBGMPlayer(this);
-        sceneRenderer = new SceneRenderer(this, binding.sceneView.getHolder());
+        sceneRenderer = new SceneRenderer(this, holder);
         // 初始化Gson
         gson = new GsonBuilder()
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                 .create();
-        binding.sceneView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
 
         binding.loadScenePack.setOnClickListener(v -> {
             // Load the scene pack
@@ -574,5 +581,20 @@ public class MainActivity extends AppCompatActivity {
             sceneRenderer.release();
             sceneRenderer = null;
         }
+    }
+
+    @Override
+    public void surfaceCreated(@NonNull SurfaceHolder holder) {
+
+    }
+
+    @Override
+    public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
+        sceneRenderer.onSurfaceChanged(width, height);
+    }
+
+    @Override
+    public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+
     }
 }

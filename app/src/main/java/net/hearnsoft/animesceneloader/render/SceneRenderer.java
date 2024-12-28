@@ -22,6 +22,17 @@ public class SceneRenderer {
     private static final String TAG = "SceneRenderer";
     private static final int DEFAULT_FPS = 60;  // 默认帧率
 
+    // 添加设计基准尺寸常量
+    private static final int DESIGN_WIDTH = 1080;
+    private static final int DESIGN_HEIGHT = 1920;
+
+    // 添加屏幕相关字段
+    private int screenWidth;
+    private int screenHeight;
+    private float scaleX;
+    private float scaleY;
+    private final Matrix screenMatrix;
+
     private final SurfaceHolder holder;
     private final Context context;
     private boolean isRunning;
@@ -68,12 +79,31 @@ public class SceneRenderer {
         this.holder = holder;
         this.resourceCache = new HashMap<>();
         this.elements = new ArrayList<>();
+        this.sceneDuration = 0;
+        this.screenMatrix = new Matrix();
         this.sceneDuration = 0;  // 默认时长为0
         setFps(DEFAULT_FPS);  // 设置默认帧率
+        updateScreenSize();
     }
 
     public void setBaseResourceDir(File resourceDir) {
         this.baseResourceDir = resourceDir;
+    }
+
+    private void updateScreenSize() {
+        screenWidth = holder.getSurfaceFrame().width();
+        screenHeight = holder.getSurfaceFrame().height();
+
+        // 计算缩放比例
+        scaleX = (float) screenWidth / DESIGN_WIDTH;
+        scaleY = (float) screenHeight / DESIGN_HEIGHT;
+
+        // 更新变换矩阵
+        screenMatrix.reset();
+        screenMatrix.setScale(scaleX, scaleY);
+
+        Log.d(TAG, String.format("Screen size: %dx%d, Scale: %.2f, %.2f",
+                screenWidth, screenHeight, scaleX, scaleY));
     }
 
     public void start() {
@@ -108,7 +138,9 @@ public class SceneRenderer {
 
         @Override
         public void run() {
-            bufferBitmap = Bitmap.createBitmap(holder.getSurfaceFrame().width(), holder.getSurfaceFrame().height(), Bitmap.Config.ARGB_8888);
+            // 使用实际屏幕尺寸创建缓冲
+            bufferBitmap = Bitmap.createBitmap(screenWidth, screenHeight,
+                    Bitmap.Config.ARGB_8888);
             bufferCanvas = new Canvas(bufferBitmap);
 
             long lastFrameNanos = System.nanoTime();
@@ -207,14 +239,19 @@ public class SceneRenderer {
 
         paint.setFilterBitmap(true);
 
-        float scale = Math.max(
-                (float) canvas.getWidth() / backgroundBitmap.getWidth(),
-                (float) canvas.getHeight() / backgroundBitmap.getHeight()
+        // 根据设计尺寸计算缩放
+        float designScale = Math.max(
+                (float) DESIGN_WIDTH / backgroundBitmap.getWidth(),
+                (float) DESIGN_HEIGHT / backgroundBitmap.getHeight()
         );
-        matrix.setScale(scale, scale);
 
-        float dx = (canvas.getWidth() - backgroundBitmap.getWidth() * scale) * 0.5f;
-        float dy = (canvas.getHeight() - backgroundBitmap.getHeight() * scale) * 0.5f;
+        // 应用屏幕缩放
+        float finalScale = designScale * Math.min(scaleX, scaleY);
+        matrix.setScale(finalScale, finalScale);
+
+        // 居中显示
+        float dx = (screenWidth - backgroundBitmap.getWidth() * finalScale) * 0.5f;
+        float dy = (screenHeight - backgroundBitmap.getHeight() * finalScale) * 0.5f;
         matrix.postTranslate(dx, dy);
 
         if (backgroundEffect != null && currentTime >= backgroundStartTime && currentTime <= backgroundEndTime) {
@@ -266,8 +303,16 @@ public class SceneRenderer {
     }
 
     private void applyMoveAnimation(Matrix matrix, SceneElement.Animation animation, float progress) {
-        float x = interpolate(animation.getFrom().getX(), animation.getTo().getX(), progress);
-        float y = interpolate(animation.getFrom().getY(), animation.getTo().getY(), progress);
+        // 获取设计坐标
+        float startX = animation.getFrom().getX();
+        float startY = animation.getFrom().getY();
+        float endX = animation.getTo().getX();
+        float endY = animation.getTo().getY();
+
+        // 转换为屏幕坐标
+        float x = interpolate(startX, endX, progress) * scaleX;
+        float y = interpolate(startY, endY, progress) * scaleY;
+
         matrix.postTranslate(x, y);
     }
 
@@ -289,13 +334,13 @@ public class SceneRenderer {
 
     private void applyThrowAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
         // 抛物线效果
-        float startX = animation.getFrom().getX();
-        float startY = animation.getFrom().getY();
-        float endX = animation.getTo().getX();
-        float endY = animation.getTo().getY();
+        float startX = animation.getFrom().getX() * scaleX;
+        float startY = animation.getFrom().getY() * scaleY;
+        float endX = animation.getTo().getX() * scaleX;
+        float endY = animation.getTo().getY() * scaleY;
 
-        // 计算抛物线路径
-        float gravity = 980f;  // 重力加速度，可调整
+        // 调整重力加速度以适应屏幕
+        float gravity = 980f * scaleY;
         float time = progress * 2.0f;  // 将进度映射到更合适的时间范围
         float vx = (endX - startX) / 2.0f;  // 水平速度
         float vy = -gravity * 0.5f;  // 初始垂直速度
@@ -307,21 +352,21 @@ public class SceneRenderer {
     }
 
     private void applyBounceAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
-        float bounceX = animation.getFrom().getX();
-        float bounceY = animation.getFrom().getY();
-        float amplitude = 100f;  // 弹跳高度
-        float frequency = 3f;    // 弹跳频率
-        float decay = 0.8f;      // 衰减系数
+        float bounceX = animation.getFrom().getX() * scaleX;
+        float bounceY = animation.getFrom().getY() * scaleY;
+        float amplitude = 100f * scaleY;  // 弹跳高度也需要缩放
+        float frequency = 3f;    // 频率保持不变
+        float decay = 0.8f;      // 衰减系数保持不变
 
-        float bounce = (float) (amplitude * (float) Math.exp(-decay * progress) *
+        float bounce = (float) (amplitude * Math.exp(-decay * progress) *
                 Math.abs(Math.sin(frequency * Math.PI * progress)));
 
         matrix.postTranslate(bounceX - centerX, bounceY - bounce - centerY);
     }
 
     private void applySwingAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
-        float pivotX = animation.getFrom().getX();
-        float pivotY = animation.getFrom().getY();
+        float pivotX = animation.getFrom().getX() * scaleX;
+        float pivotY = animation.getFrom().getY() * scaleY;
         float swingAngle = 30f;  // 最大摆动角度
         float swingFreq = 2f;    // 摆动频率
         float damping = 0.5f;    // 阻尼系数
@@ -334,18 +379,20 @@ public class SceneRenderer {
     }
 
     private void applySpringAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
-        float targetX = animation.getTo().getX();
-        float targetY = animation.getTo().getY();
-        float springK = 8f;      // 弹簧系数
-        float dampingRatio = 0.4f; // 阻尼比
+        float startX = animation.getFrom().getX() * scaleX;
+        float startY = animation.getFrom().getY() * scaleY;
+        float targetX = animation.getTo().getX() * scaleX;
+        float targetY = animation.getTo().getY() * scaleY;
+        float springK = 8f;      // 弹簧系数保持不变
+        float dampingRatio = 0.4f; // 阻尼比保持不变
 
-        float dx = targetX - animation.getFrom().getX();
-        float dy = targetY - animation.getFrom().getY();
+        float dx = targetX - startX;
+        float dy = targetY - startY;
         float springProgress = 1 - (float) (Math.exp(-springK * progress) *
                 Math.cos(dampingRatio * springK * progress));
 
-        float springX = animation.getFrom().getX() + dx * springProgress;
-        float springY = animation.getFrom().getY() + dy * springProgress;
+        float springX = startX + dx * springProgress;
+        float springY = startY + dy * springProgress;
 
         matrix.postTranslate(springX - centerX, springY - centerY);
     }
@@ -477,5 +524,19 @@ public class SceneRenderer {
         }
         resourceCache.clear();
         clearRenderState();
+    }
+
+    public void onSurfaceChanged(int width, int height) {
+        screenWidth = width;
+        screenHeight = height;
+        updateScreenSize();
+
+        // 如果渲染线程正在运行，需要更新缓冲区
+        if (renderThread != null && renderThread.bufferBitmap != null) {
+            renderThread.bufferBitmap.recycle();
+            renderThread.bufferBitmap = Bitmap.createBitmap(
+                    screenWidth, screenHeight, Bitmap.Config.ARGB_8888);
+            renderThread.bufferCanvas = new Canvas(renderThread.bufferBitmap);
+        }
     }
 }
