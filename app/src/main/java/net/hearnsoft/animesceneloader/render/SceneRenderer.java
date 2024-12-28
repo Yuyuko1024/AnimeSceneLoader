@@ -26,6 +26,17 @@ public class SceneRenderer {
     private static final int DESIGN_WIDTH = 1080;
     private static final int DESIGN_HEIGHT = 1920;
 
+    // 添加屏幕相对位置字段
+    private static final String SCREEN_START = "screenStart";
+    private static final String SCREEN_END = "screenEnd";
+    private static final String SCREEN_TOP = "screenTop";
+    private static final String SCREEN_BOTTOM = "screenBottom";
+    private static final String TOP_LEFT = "topLeft";
+    private static final String TOP_RIGHT = "topRight";
+    private static final String BOTTOM_LEFT = "bottomLeft";
+    private static final String BOTTOM_RIGHT = "bottomRight";
+    private static final String CENTER = "center";
+
     // 添加屏幕相关字段
     private int screenWidth;
     private int screenHeight;
@@ -303,11 +314,11 @@ public class SceneRenderer {
     }
 
     private void applyMoveAnimation(Matrix matrix, SceneElement.Animation animation, float progress) {
-        // 获取设计坐标
-        float startX = animation.getFrom().getX();
-        float startY = animation.getFrom().getY();
-        float endX = animation.getTo().getX();
-        float endY = animation.getTo().getY();
+        // 转换关键词坐标为实际坐标
+        float startX = convertKeywordToX(animation.getFrom().getXString());
+        float startY = convertKeywordToY(animation.getFrom().getYString());
+        float endX = convertKeywordToX(animation.getTo().getXString());
+        float endY = convertKeywordToY(animation.getTo().getYString());
 
         // 转换为屏幕坐标
         float x = interpolate(startX, endX, progress) * scaleX;
@@ -333,18 +344,25 @@ public class SceneRenderer {
     }
 
     private void applyThrowAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
-        // 抛物线效果
-        float startX = animation.getFrom().getX() * scaleX;
-        float startY = animation.getFrom().getY() * scaleY;
-        float endX = animation.getTo().getX() * scaleX;
-        float endY = animation.getTo().getY() * scaleY;
+        // 转换关键词坐标
+        float startX = convertKeywordToX(animation.getFrom().getXString()) * scaleX;
+        float startY = convertKeywordToY(animation.getFrom().getYString()) * scaleY;
+        float endX = convertKeywordToX(animation.getTo().getXString()) * scaleX;
+        float endY = convertKeywordToY(animation.getTo().getYString()) * scaleY;
 
-        // 调整重力加速度以适应屏幕
-        float gravity = 980f * scaleY;
-        float time = progress * 2.0f;  // 将进度映射到更合适的时间范围
-        float vx = (endX - startX) / 2.0f;  // 水平速度
-        float vy = -gravity * 0.5f;  // 初始垂直速度
+        // 物理参数
+        float gravity = 980f * scaleY;  // 重力加速度
+        float duration = 2.0f;          // 总时间
+        float time = progress * duration;
 
+        // 计算初始速度
+        float vx = (endX - startX) / duration;  // 水平速度
+
+        // 计算垂直初速度（根据终点位置）
+        // 使用运动方程：y = y0 + v0y*t + 0.5*g*t^2
+        float vy = ((endY - startY) - 0.5f * gravity * duration * duration) / duration;
+
+        // 计算当前位置
         float x = startX + vx * time;
         float y = startY + vy * time + 0.5f * gravity * time * time;
 
@@ -352,11 +370,11 @@ public class SceneRenderer {
     }
 
     private void applyBounceAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
-        float bounceX = animation.getFrom().getX() * scaleX;
-        float bounceY = animation.getFrom().getY() * scaleY;
-        float amplitude = 100f * scaleY;  // 弹跳高度也需要缩放
-        float frequency = 3f;    // 频率保持不变
-        float decay = 0.8f;      // 衰减系数保持不变
+        float bounceX = convertKeywordToX(animation.getFrom().getXString()) * scaleX;
+        float bounceY = convertKeywordToY(animation.getFrom().getYString()) * scaleY;
+        float amplitude = 100f * scaleY;
+        float frequency = 3f;
+        float decay = 0.8f;
 
         float bounce = (float) (amplitude * Math.exp(-decay * progress) *
                 Math.abs(Math.sin(frequency * Math.PI * progress)));
@@ -365,11 +383,11 @@ public class SceneRenderer {
     }
 
     private void applySwingAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
-        float pivotX = animation.getFrom().getX() * scaleX;
-        float pivotY = animation.getFrom().getY() * scaleY;
-        float swingAngle = 30f;  // 最大摆动角度
-        float swingFreq = 2f;    // 摆动频率
-        float damping = 0.5f;    // 阻尼系数
+        float pivotX = convertKeywordToX(animation.getFrom().getXString()) * scaleX;
+        float pivotY = convertKeywordToY(animation.getFrom().getYString()) * scaleY;
+        float swingAngle = 30f;
+        float swingFreq = 2f;
+        float damping = 0.5f;
 
         float finalAngle = swingAngle * (float) Math.exp(-damping * progress) *
                 (float) Math.sin(swingFreq * Math.PI * progress);
@@ -379,12 +397,12 @@ public class SceneRenderer {
     }
 
     private void applySpringAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
-        float startX = animation.getFrom().getX() * scaleX;
-        float startY = animation.getFrom().getY() * scaleY;
-        float targetX = animation.getTo().getX() * scaleX;
-        float targetY = animation.getTo().getY() * scaleY;
-        float springK = 8f;      // 弹簧系数保持不变
-        float dampingRatio = 0.4f; // 阻尼比保持不变
+        float startX = convertKeywordToX(animation.getFrom().getXString()) * scaleX;
+        float startY = convertKeywordToY(animation.getFrom().getYString()) * scaleY;
+        float targetX = convertKeywordToX(animation.getTo().getXString()) * scaleX;
+        float targetY = convertKeywordToY(animation.getTo().getYString()) * scaleY;
+        float springK = 8f;
+        float dampingRatio = 0.4f;
 
         float dx = targetX - startX;
         float dy = targetY - startY;
@@ -459,6 +477,55 @@ public class SceneRenderer {
     private float bezierInterpolate(float p0, float p1, float p2, float t) {
         float oneMinusT = 1 - t;
         return oneMinusT * oneMinusT * p0 + 2 * oneMinusT * t * p1 + t * t * p2;
+    }
+
+    // 添加坐标转换方法
+    private float convertKeywordToX(String keyword) {
+        if (keyword == null) return 0;
+
+        switch (keyword) {
+            case SCREEN_START:
+            case TOP_LEFT:
+            case BOTTOM_LEFT:
+                return 0;
+            case SCREEN_END:
+            case TOP_RIGHT:
+            case BOTTOM_RIGHT:
+                return DESIGN_WIDTH;
+            case CENTER:
+                return DESIGN_WIDTH / 2f;
+            default:
+                try {
+                    return Float.parseFloat(keyword);
+                } catch (NumberFormatException e) {
+                    Log.w(TAG, "Invalid X coordinate: " + keyword + ", using 0");
+                    return 0;
+                }
+        }
+    }
+
+    private float convertKeywordToY(String keyword) {
+        if (keyword == null) return 0;
+
+        switch (keyword) {
+            case SCREEN_TOP:
+            case TOP_LEFT:
+            case TOP_RIGHT:
+                return 0;
+            case SCREEN_BOTTOM:
+            case BOTTOM_LEFT:
+            case BOTTOM_RIGHT:
+                return DESIGN_HEIGHT;
+            case CENTER:
+                return DESIGN_HEIGHT / 2f;
+            default:
+                try {
+                    return Float.parseFloat(keyword);
+                } catch (NumberFormatException e) {
+                    Log.w(TAG, "Invalid Y coordinate: " + keyword + ", using 0");
+                    return 0;
+                }
+        }
     }
 
     private Bitmap getElementBitmap(SceneElement element) {

@@ -1,35 +1,30 @@
 package net.hearnsoft.animesceneloader.model;
 
 public class Point {
-    private float x;
-    private float y;
+    private String x;  // 改为String类型
+    private String y;  // 改为String类型
 
-    public Point() {}
-
-    public Point(float x, float y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    public float getX() {
+    public String getXString() {
         return x;
     }
 
-    public void setX(float x) {
-        this.x = x;
-    }
-
-    public float getY() {
+    public String getYString() {
         return y;
     }
 
-    public void setY(float y) {
-        this.y = y;
+    public float getX() {
+        try {
+            return Float.parseFloat(x);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
-    public float distanceTo(Point other) {
-        float dx = this.x - other.x;
-        float dy = this.y - other.y;
-        return (float) Math.sqrt(dx * dx + dy * dy);
+    public float getY() {
+        try {
+            return Float.parseFloat(y);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 }
