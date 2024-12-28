@@ -192,7 +192,7 @@ public class SceneRenderer {
         }
 
         if (currentAnimation != null) {
-            float progress = (float)(currentTime - currentAnimation.getDuration().getFrom()) /
+            float progress = (float) (currentTime - currentAnimation.getDuration().getFrom()) /
                     (currentAnimation.getDuration().getTo() - currentAnimation.getDuration().getFrom());
 
             applyAnimation(canvas, bitmap, currentAnimation, progress, matrix, paint);
@@ -218,7 +218,7 @@ public class SceneRenderer {
         matrix.postTranslate(dx, dy);
 
         if (backgroundEffect != null && currentTime >= backgroundStartTime && currentTime <= backgroundEndTime) {
-            float progress = (float)(currentTime - backgroundStartTime) / (backgroundEndTime - backgroundStartTime);
+            float progress = (float) (currentTime - backgroundStartTime) / (backgroundEndTime - backgroundStartTime);
             applyBackgroundEffect(canvas, matrix, paint, progress);
         } else {
             canvas.drawBitmap(backgroundBitmap, matrix, paint);
@@ -236,110 +236,131 @@ public class SceneRenderer {
 
         switch (animation.getType()) {
             case "move":
-                float x = interpolate(animation.getFrom().getX(), animation.getTo().getX(), progress);
-                float y = interpolate(animation.getFrom().getY(), animation.getTo().getY(), progress);
-                matrix.postTranslate(x, y);
+                applyMoveAnimation(matrix, animation, progress);
                 break;
             case "scale":
-                float scaleX = interpolate(animation.getFrom().getX(), animation.getTo().getX(), progress);
-                float scaleY = interpolate(animation.getFrom().getY(), animation.getTo().getY(), progress);
-                matrix.postScale(scaleX, scaleY);
+                applyScaleAnimation(matrix, animation, progress);
                 break;
             case "rotate":
-                float angle = interpolate(animation.getFromAngle(),
-                        animation.getToAngle(), progress);
-                matrix.postRotate(angle);
+                applyRotateAnimation(matrix, animation, progress);
                 break;
             case "fade_in":
             case "fade_out":
-                float alpha = interpolate(animation.getFromAlpha(),
-                        animation.getToAlpha(), progress);
-                paint.setAlpha((int)(alpha * 255));
+                applyFadeAnimation(paint, animation, progress);
                 break;
             case "throw":
-                // 抛物线效果
-                float startX = animation.getFrom().getX();
-                float startY = animation.getFrom().getY();
-                float endX = animation.getTo().getX();
-                float endY = animation.getTo().getY();
-
-                // 计算抛物线路径
-                float gravity = 980f;  // 重力加速度，可调整
-                float time = progress * 2.0f;  // 将进度映射到更合适的时间范围
-                float vx = (endX - startX) / 2.0f;  // 水平速度
-                float vy = -gravity * 0.5f;  // 初始垂直速度
-
-                float finalX = startX + vx * time;
-                float finalY = startY + vy * time + 0.5f * gravity * time * time;
-
-                matrix.postTranslate(finalX - centerX, finalY - centerY);
+                applyThrowAnimation(matrix, animation, progress, centerX, centerY);
                 break;
-
             case "bounce":
-                // 弹跳效果
-                float bounceX = animation.getFrom().getX();
-                float bounceY = animation.getFrom().getY();
-                float amplitude = 100f;  // 弹跳高度
-                float frequency = 3f;    // 弹跳频率
-                float decay = 0.8f;      // 衰减系数
-
-                // 计算弹跳位置
-                float bounce = (float) (amplitude * (float)Math.exp(-decay * progress) *
-                                        Math.abs(Math.sin(frequency * Math.PI * progress)));
-
-                matrix.postTranslate(bounceX - centerX, bounceY - bounce - centerY);
+                applyBounceAnimation(matrix, animation, progress, centerX, centerY);
                 break;
-
             case "swing":
-                // 摇摆效果
-                float pivotX = animation.getFrom().getX();
-                float pivotY = animation.getFrom().getY();
-                float swingAngle = 30f;  // 最大摆动角度
-                float swingFreq = 2f;    // 摆动频率
-                float damping = 0.5f;    // 阻尼系数
-
-                // 计算摆动角度
-                float finalAngle = swingAngle * (float)Math.exp(-damping * progress) *
-                        (float)Math.sin(swingFreq * Math.PI * progress);
-
-                matrix.postTranslate(pivotX - centerX, pivotY - centerY);
-                matrix.postRotate(finalAngle, pivotX, pivotY);
+                applySwingAnimation(matrix, animation, progress, centerX, centerY);
                 break;
-
             case "spring":
-                // 弹簧效果
-                float targetX = animation.getTo().getX();
-                float targetY = animation.getTo().getY();
-                float springK = 8f;      // 弹簧系数
-                float dampingRatio = 0.4f; // 阻尼比
-
-                // 计算弹簧运动
-                float dx = targetX - animation.getFrom().getX();
-                float dy = targetY - animation.getFrom().getY();
-                float springProgress = 1 - (float)(Math.exp(-springK * progress) *
-                        Math.cos(dampingRatio * springK * progress));
-
-                float springX = animation.getFrom().getX() + dx * springProgress;
-                float springY = animation.getFrom().getY() + dy * springProgress;
-
-                matrix.postTranslate(springX - centerX, springY - centerY);
+                applySpringAnimation(matrix, animation, progress, centerX, centerY);
                 break;
         }
 
         canvas.drawBitmap(bitmap, matrix, paint);
     }
 
+    private void applyMoveAnimation(Matrix matrix, SceneElement.Animation animation, float progress) {
+        float x = interpolate(animation.getFrom().getX(), animation.getTo().getX(), progress);
+        float y = interpolate(animation.getFrom().getY(), animation.getTo().getY(), progress);
+        matrix.postTranslate(x, y);
+    }
+
+    private void applyScaleAnimation(Matrix matrix, SceneElement.Animation animation, float progress) {
+        float scaleX = interpolate(animation.getFrom().getX(), animation.getTo().getX(), progress);
+        float scaleY = interpolate(animation.getFrom().getY(), animation.getTo().getY(), progress);
+        matrix.postScale(scaleX, scaleY);
+    }
+
+    private void applyRotateAnimation(Matrix matrix, SceneElement.Animation animation, float progress) {
+        float angle = interpolate(animation.getFromAngle(), animation.getToAngle(), progress);
+        matrix.postRotate(angle);
+    }
+
+    private void applyFadeAnimation(Paint paint, SceneElement.Animation animation, float progress) {
+        float alpha = interpolate(animation.getFromAlpha(), animation.getToAlpha(), progress);
+        paint.setAlpha((int) (alpha * 255));
+    }
+
+    private void applyThrowAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
+        // 抛物线效果
+        float startX = animation.getFrom().getX();
+        float startY = animation.getFrom().getY();
+        float endX = animation.getTo().getX();
+        float endY = animation.getTo().getY();
+
+        // 计算抛物线路径
+        float gravity = 980f;  // 重力加速度，可调整
+        float time = progress * 2.0f;  // 将进度映射到更合适的时间范围
+        float vx = (endX - startX) / 2.0f;  // 水平速度
+        float vy = -gravity * 0.5f;  // 初始垂直速度
+
+        float x = startX + vx * time;
+        float y = startY + vy * time + 0.5f * gravity * time * time;
+
+        matrix.postTranslate(x - centerX, y - centerY);
+    }
+
+    private void applyBounceAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
+        float bounceX = animation.getFrom().getX();
+        float bounceY = animation.getFrom().getY();
+        float amplitude = 100f;  // 弹跳高度
+        float frequency = 3f;    // 弹跳频率
+        float decay = 0.8f;      // 衰减系数
+
+        float bounce = (float) (amplitude * (float) Math.exp(-decay * progress) *
+                Math.abs(Math.sin(frequency * Math.PI * progress)));
+
+        matrix.postTranslate(bounceX - centerX, bounceY - bounce - centerY);
+    }
+
+    private void applySwingAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
+        float pivotX = animation.getFrom().getX();
+        float pivotY = animation.getFrom().getY();
+        float swingAngle = 30f;  // 最大摆动角度
+        float swingFreq = 2f;    // 摆动频率
+        float damping = 0.5f;    // 阻尼系数
+
+        float finalAngle = swingAngle * (float) Math.exp(-damping * progress) *
+                (float) Math.sin(swingFreq * Math.PI * progress);
+
+        matrix.postTranslate(pivotX - centerX, pivotY - centerY);
+        matrix.postRotate(finalAngle, pivotX, pivotY);
+    }
+
+    private void applySpringAnimation(Matrix matrix, SceneElement.Animation animation, float progress, float centerX, float centerY) {
+        float targetX = animation.getTo().getX();
+        float targetY = animation.getTo().getY();
+        float springK = 8f;      // 弹簧系数
+        float dampingRatio = 0.4f; // 阻尼比
+
+        float dx = targetX - animation.getFrom().getX();
+        float dy = targetY - animation.getFrom().getY();
+        float springProgress = 1 - (float) (Math.exp(-springK * progress) *
+                Math.cos(dampingRatio * springK * progress));
+
+        float springX = animation.getFrom().getX() + dx * springProgress;
+        float springY = animation.getFrom().getY() + dy * springProgress;
+
+        matrix.postTranslate(springX - centerX, springY - centerY);
+    }
+
     private void applyBackgroundEffect(Canvas canvas, Matrix matrix, Paint paint, float progress) {
         switch (backgroundEffect) {
             case "fade_in":
-                paint.setAlpha((int)(progress * 255));
+                paint.setAlpha((int) (progress * 255));
                 break;
             case "fade_out":
-                paint.setAlpha((int)((1 - progress) * 255));
+                paint.setAlpha((int) ((1 - progress) * 255));
                 break;
             case "zoom_in":
                 float scale = 1 + progress * 0.2f;  // 放大到1.2倍
-                matrix.postScale(scale, scale, canvas.getWidth()/2f, canvas.getHeight()/2f);
+                matrix.postScale(scale, scale, canvas.getWidth() / 2f, canvas.getHeight() / 2f);
                 break;
             // 可以添加更多效果...
         }
