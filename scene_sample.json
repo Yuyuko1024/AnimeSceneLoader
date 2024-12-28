@@ -1,0 +1,116 @@
+{
+    "name": "AnimeSceneTestScene", // 场景名称
+    "version": "1.0.0", // 版本
+    "description": "This is a test scene for AnimeSceneLoader", // 场景描述
+    "author": "AnimeSceneLoader", // 作者
+    "resources": { // 资源目录定义
+        "bgm": "bgm/bgm.mp3", // 背景音乐
+        "scene_background_dir": "scene_background", // 场景背景目录
+        "character_dir": "character", // 角色目录
+        "effects_json_dir": "effects_json", // 效果JSON目录
+        "effects_sound_dir": "effects_sound" // 效果音效目录
+    },
+    "scene_config": {
+        "fps": 30, // 帧率
+        "bgm_volume": 1.0, // 背景音乐音量
+        "scene_duration_sync_with_bgm": true, // 场景持续时间是否与背景音乐相同
+        "scene_duration": 0 // 场景持续时间,如果上述定义为false,则定义该场景持续时间,bgm播放完毕后，场景根据该时间播放完毕，若上述配置为true则忽略该项值
+    },
+    "scenes": [
+        {
+            "name": "MainScene",
+            "description": "主场景",
+            "background": [
+                {
+                    "type": "image",
+                    "name": "background1",
+                    "path": "scene_background/bg1.png",
+                    "effect": "effects_json/bg_fade.json",
+                    "duration": {"from": 0, "to": 5000}
+                },
+                {
+                    "type": "video",
+                    "name": "background2",
+                    "path": "scene_background/bg2.mp4",
+                    "effect": "effects_json/bg_transition.json",
+                    "duration": {"from": 5000, "to": 10000}
+                }
+            ],
+            "elements": [
+                {
+                    "type": "sprite",
+                    "name": "character1",
+                    "path": "character/char1.png",
+                    "z_index": 1,
+                    "scenes": [
+                        {
+                            "type": "fade_in",
+                            "duration": {"from": 0, "to": 1000},
+                            "easing": "ease_in_out",
+                            "from_alpha": 0.0,
+                            "to_alpha": 1.0
+                        },
+                        {
+                            "type": "move",
+                            "duration": {"from": 1000, "to": 3000},
+                            "easing": "ease_out",
+                            "from": {"x": -100, "y": 200},
+                            "to": {"x": 300, "y": 200}
+                        },
+                        {
+                            "type": "scale",
+                            "duration": {"from": 3000, "to": 4000},
+                            "easing": "linear",
+                            "from": {"x": 1.0, "y": 1.0},
+                            "to": {"x": 1.5, "y": 1.5}
+                        },
+                        {
+                            "type": "rotate",
+                            "duration": {"from": 4000, "to": 5000},
+                            "easing": "ease_in",
+                            "from_angle": 0,
+                            "to_angle": 360
+                        },
+                        {
+                            "type": "composite",
+                            "duration": {"from": 5000, "to": 7000},
+                            "animations": [
+                                {
+                                    "type": "move",
+                                    "from": {"x": 300, "y": 200},
+                                    "to": {"x": 500, "y": 400}
+                                },
+                                {
+                                    "type": "scale",
+                                    "from": {"x": 1.5, "y": 1.5},
+                                    "to": {"x": 1.0, "y": 1.0}
+                                }
+                            ]
+                        },
+                        {
+                            "type": "custom_path",
+                            "duration": {"from": 7000, "to": 9000},
+                            "easing": "ease_in_out",
+                            "path_points": [
+                                {"x": 500, "y": 400},
+                                {"x": 400, "y": 300},
+                                {"x": 300, "y": 400},
+                                {"x": 200, "y": 300}
+                            ],
+                            "path_type": "bezier"
+                        },
+                        {
+                            "type": "marquee",
+                            "duration": {"from": 9000, "to": 12000},
+                            "speed": 100,
+                            "marquee_margin": 100,
+                            "marquee_repeat": true,
+                            "from": {"x": -100, "y": 200},
+                            "to": {"x": 800, "y": 200}
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
